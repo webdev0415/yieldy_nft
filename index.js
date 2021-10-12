@@ -51,7 +51,7 @@ async function createAsset(algodClient, sender, metadataFile) {
     const metadata = new Uint8Array(hash.digest()); 
 
     const metadatafileImage = (await fs.readFileSync(metadataFile.image));
-//    const metadatafileImage = (await fs.readFileSync(fullPathImage)).toString();    
+//    const metadatafileImage = (await fs.readFileSync(fullPathImage)).toString();  
     const hashImage = crypto.createHash('sha256');
     hashImage.update(metadatafileImage);
     const hashImageBase64 = hashImage.digest("base64");
@@ -337,7 +337,7 @@ const printAssetHolding = async function (algodClient, account, assetid) {
 async function createNFT() {
     const myaccount = algosdk.generateAccount();
     const sender = {
-        addr: 'UKVIBOSHNMK7OHZ3FWI7ZVFCMT4N4OFQUBXY2OIXKRVPBU676E46SNINEQ',
+        addr: myaccount.addr,
         sk: myaccount.sk
       }
     const metadataFile = {
