@@ -1,23 +1,6 @@
 const algosdk = require("algosdk");
 const crypto = require("crypto");
 const fs = require("fs");
-//const fs = require('fs/promises');
-// see ASA param conventions here: https://github.com/algorandfoundation/ARCs/blob/main/ARCs/arc-0003.md
-// for JavaScript SDK doc see: https://algorand.github.io/js-algorand-sdk/
-
-const keypress = async () => {
-  process.stdin.setRawMode(true);
-  return new Promise((resolve) =>
-    process.stdin.once("data", () => {
-      process.stdin.setRawMode(false);
-      resolve();
-    })
-  );
-};
-// createAccount
-// once created sucessfully, you will need to add funds
-// The Algorand TestNet Dispenser is located here:
-// https://dispenser.testnet.aws.algodev.network/
 
 const DISPENSERACCOUNT =
   "HZ57J3K46JIJXILONBBZOHX6BKPXEM2VVXNRFSUED6DKFD5ZD24PMJ3MVA";
@@ -32,16 +15,8 @@ async function createAsset(algodClient, sender) {
   // Construct the transaction
   const params = await algodClient.getTransactionParams().do();
   // comment out the next two lines to use suggested fee
-  // params.fee = 1000;
-  // params.flatFee = true;
-  // const closeout = receiver; //closeRemainderTo
-  // WARNING! all remaining funds in the sender account above will be sent to the closeRemainderTo Account
-  // In order to keep all remaining funds in the sender account after tx, set closeout parameter to undefined.
-  // For more info see:
-  // https://developer.algorand.org/docs/reference/transactions/#payment-transaction
-  // Asset creation specific parameters
-  // The following parameters are asset specific
-  // Throughout the example these will be re-used.
+  params.fee = 1000;
+  params.flatFee = true;
 
   // Whether user accounts will need to be unfrozen before transacting
   const defaultFrozen = false;
@@ -50,7 +25,7 @@ async function createAsset(algodClient, sender) {
   // Friendly name of the asset
   const assetName = "Alice's Artwork Coins@arc3";
   // Optional string pointing to a URL relating to the asset
-  // const url = "https://s3.amazonaws.com/your-bucket/metadata.json";
+  const url = "https://riotracersnft.s3.us-east-2.amazonaws.com/coming-soon.gif";
   // Optional hash commitment of some sort relating to the asset. 32 character length.
   // metadata can define the unitName and assetName as well.
   // see ASA metadata conventions here: https://github.com/algorandfoundation/ARCs/blob/main/ARCs/arc-0003.md
@@ -60,7 +35,7 @@ async function createAsset(algodClient, sender) {
   // by the current manager
   // Specified address can change reserve, freeze, clawback, and manager
   // If they are set to undefined at creation time, you will not be able to modify these later
-  const managerAddr = alice.addr; // OPTIONAL: FOR DEMO ONLY, USED TO DESTROY ASSET WITHIN
+  const managerAddr = sender.addr; // OPTIONAL: FOR DEMO ONLY, USED TO DESTROY ASSET WITHIN
   // Specified address is considered the asset reserve
   // (it has no special privileges, this is only informational)
   const reserveAddr = undefined;
@@ -135,7 +110,7 @@ async function createAsset(algodClient, sender) {
 
   // signing and sending "txn" allows "addr" to create an asset
   const txn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
-    from: alice.addr,
+    from: sender.addr,
     total,
     decimals,
     assetName,
@@ -150,7 +125,7 @@ async function createAsset(algodClient, sender) {
     suggestedParams: params,
   });
 
-  const rawSignedTxn = txn.signTxn(alice.sk);
+  const rawSignedTxn = txn.signTxn(sender.sk);
   const tx = await algodClient.sendRawTransaction(rawSignedTxn).do();
   let assetID = null;
   // wait for transaction to be confirmed
@@ -166,8 +141,8 @@ async function createAsset(algodClient, sender) {
   assetID = ptx["asset-index"];
   // console.log("AssetID = " + assetID);
 
-  await printCreatedAsset(algodClient, alice.addr, assetID);
-  await printAssetHolding(algodClient, alice.addr, assetID);
+  await printCreatedAsset(algodClient, sender.addr, assetID);
+  await printAssetHolding(algodClient, sender.addr, assetID);
   console.log(
     "You can verify the metadata-hash above in the asset creation details"
   );
@@ -211,7 +186,7 @@ async function createAsset(algodClient, sender) {
   // }
 }
 
-async function destroyAsset(algodClient, alice, assetID) {
+async function destroyAsset(algodClient, sender, assetID) {
   console.log("");
   console.log("==> DESTROY ASSET");
   // All of the created assets should now be back in the creators
@@ -222,7 +197,7 @@ async function destroyAsset(algodClient, alice, assetID) {
   // params.fee = 1000;
   // params.flatFee = true;
   // The address for the from field must be the manager account
-  const addr = alice.addr;
+  const addr = sender.addr;
   // if all assets are held by the asset creator,
   // the asset creator can sign and issue "txn" to remove the asset from the ledger.
   const txn = algosdk.makeAssetDestroyTxnWithSuggestedParamsFromObject({
@@ -233,7 +208,7 @@ async function destroyAsset(algodClient, alice, assetID) {
   });
   // The transaction must be signed by the manager which
   // is currently set to alice
-  const rawSignedTxn = txn.signTxn(alice.sk);
+  const rawSignedTxn = txn.signTxn(sender.sk);
   const tx = await algodClient.sendRawTransaction(rawSignedTxn).do();
   // Wait for confirmation
   const confirmedTxn = await waitForConfirmation(algodClient, tx.txId, 4);
@@ -246,9 +221,9 @@ async function destroyAsset(algodClient, alice, assetID) {
   );
   // The account3 and account1 should no longer contain the asset as it has been destroyed
   console.log("Asset ID: " + assetID);
-  console.log("Alice = " + alice.addr);
-  await printCreatedAsset(algodClient, alice.addr, assetID);
-  await printAssetHolding(algodClient, alice.addr, assetID);
+  console.log("Alice = " + sender.addr);
+  await printCreatedAsset(algodClient, sender.addr, assetID);
+  await printAssetHolding(algodClient, sender.addr, assetID);
 
   return;
   // Notice that although the asset was destroyed, the asset id and associated
@@ -269,7 +244,7 @@ async function destroyAsset(algodClient, alice, assetID) {
 async function closeoutAliceAlgos(algodClient, alice) {
   console.log("");
   console.log("==> CLOSE OUT ALICE'S ALGOS TO DISPENSER");
-  let accountInfo = await algodClient.accountInformation(alice.addr).do();
+  let accountInfo = await algodClient.accountInformation(sender.addr).do();
   console.log("Alice Account balance: %d microAlgos", accountInfo.amount);
   const startingAmount = accountInfo.amount;
   // Construct the transaction
@@ -280,10 +255,10 @@ async function closeoutAliceAlgos(algodClient, alice) {
   // For more info see:
   // https://developer.algorand.org/docs/reference/transactions/#payment-transaction
   // receiver account to send to
-  const receiver = alice.addr;
+  const receiver = sender.addr;
   const enc = new TextEncoder();
   const amount = 0;
-  const sender = alice.addr;
+  const sender = sender.addr;
   // closeToRemainder will remove the assetholding from the account
   const closeRemainderTo = DISPENSERACCOUNT;
   const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
@@ -295,7 +270,7 @@ async function closeoutAliceAlgos(algodClient, alice) {
     suggestedParams: params,
   });
   // Sign the transaction
-  const rawSignedTxn = txn.signTxn(alice.sk);
+  const rawSignedTxn = txn.signTxn(sender.sk);
   // Submit the transaction
   const tx = await algodClient.sendRawTransaction(rawSignedTxn).do();
   // Wait for confirmation
@@ -309,7 +284,7 @@ async function closeoutAliceAlgos(algodClient, alice) {
   );
   // const mytxinfo = JSON.stringify(confirmedTxn.txn.txn, undefined, 2);
   // console.log("Transaction information: %o", mytxinfo);
-  accountInfo = await algodClient.accountInformation(alice.addr).do();
+  accountInfo = await algodClient.accountInformation(sender.addr).do();
   let txAmount = confirmedTxn.txn.txn.amt;
   if (confirmedTxn.txn.txn.amt == undefined) {
     console.log("Transaction Amount: %d microAlgos", 0);
@@ -466,9 +441,9 @@ async function createNFT() {
     // CREATE ASSET
     const { assetID } = await createAsset(algodClient, sender);
     // DESTROY ASSET
-    // await destroyAsset(algodClient, alice, assetID);
+    // await destroyAsset(algodClient, sender, assetID);
     // CLOSEOUT ALGOS - Alice closes out Alogs to dispenser
-    // await closeoutAliceAlgos(algodClient, alice);
+    // await closeoutAliceAlgos(algodClient, sender);
   } catch (err) {
     console.log("err", err);
   }
