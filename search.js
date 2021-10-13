@@ -14,8 +14,8 @@ let indexerClient = new algosdk.Indexer(
 export async function searchAssetName({ name, creator }) {
   console.log("");
   console.log("==> SEARCH ASSETS FOR NAME AND CREATOR");
-  const name = "Alice's Artwork";
-  const creator = "BHF5U3LAR5Z7R272Q4VK6JLWFSYWKBS7PLA44FFBK2YW2WZLQM7FXOJXQM";
+//   const name = "Alice's Artwork";
+//   const creator = "BHF5U3LAR5Z7R272Q4VK6JLWFSYWKBS7PLA44FFBK2YW2WZLQM7FXOJXQM";
   const assetInfo = await indexerClient
     .searchForAssets()
     .name(name)
@@ -31,7 +31,7 @@ export async function searchAssetName({ name, creator }) {
 export async function assetBalances({ assetIndex }) {
   console.log("");
   console.log("==> LOOKUP ASSET BALANCES");
-  let assetIndex = 29340683;
+//   let assetIndex = 29340683;
   let assetInfo = await indexerClient.lookupAssetBalances(assetIndex).do();
   console.log(
     "Information for Asset: " + JSON.stringify(assetInfo, undefined, 2)
