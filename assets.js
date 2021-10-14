@@ -42,15 +42,15 @@ async function createAsset(algodClient, sender, manager) {
   // If they are set to undefined at creation time, you will not be able to modify these later
 
   // Specified address can change reserve, freeze, clawback, and manager
-  const managerAddr = manager.addr; // OPTIONAL: FOR DEMO ONLY, USED TO DESTROY ASSET WITHIN
+  const managerAddr = undefined; // OPTIONAL: FOR DEMO ONLY, USED TO DESTROY ASSET WITHIN
   // Specified address is considered the asset reserve
   // (it has no special privileges, this is only informational)
-  const reserveAddr = manager.addr;
+  const reserveAddr = undefined;
   // Specified address can freeze or unfreeze user asset holdings
-  const freezeAddr = manager.addr;
+  const freezeAddr = undefined;
   // Specified address can revoke user asset holdings and send
   // them to other addresses
-  const clawbackAddr = manager.addr;
+  const clawbackAddr = undefined;
 
   // Use actual total  > 1 to create a Fungible Token
   // example 1:(fungible Tokens)
@@ -150,61 +150,6 @@ async function createAsset(algodClient, sender, manager) {
   //   "creator": "RA6RAUNDQGHRWTCR5YRL2YJMIXTHWD5S3ZYHVBGSNA76AVBAYELSNRVKEI",
   //   "is-frozen": false
   // }
-}
-async function modifyAsset(algodClient, sender, manager) {
-  //These valuse should be come from params.
-  const note = undefined;
-  const assetID = 37491734;
-  const reserve = undefined;
-  const freeze = undefined;
-  const clawback = undefined;
-  params = await algodclient.getTransactionParams().do();
-  //comment out the next two lines to use suggested fee
-  params.fee = 1000;
-  params.flatFee = true;
-
-  // Note that the change has to come from the existing manager
-  const c = algosdk.makeAssetConfigTxnWithSuggestedParams(
-    recoveredAccount2.addr,
-    note,
-    assetID,
-    manager.addr,
-    reserve,
-    freeze,
-    clawback,
-    params
-  );
-
-  const rawSignedTxn = ctxn.signTxn(manager.sk);
-  const ctx = await algodclient.sendRawTransaction(rawSignedTxn).do();
-  console.log("Transaction : " + ctx.txId);
-
-  // wait for transaction to be confirmed
-  await waitForConfirmation(algodclient, ctx.txId, 4);
-
-  // Get the asset information for the newly changed asset
-  // use indexer or utiltiy function for Account info
-  // The manager should now be the same as the creator
-  await printCreatedAsset(algodclient, sender.addr, assetID);
-  // Transaction: BXDODE2RUC77WVJL6HOQBACVAS6QPXOBSE55ZZTLJUTNLBXZNENA
-  // Transaction BXDODE2RUC77WVJL6HOQBACVAS6QPXOBSE55ZZTLJUTNLBXZNENA confirmed in round 3961855
-  // AssetID = 2653785
-  // parms = {
-  //     "clawback": "AK6Q33PDO4RJZQPHEMODC6PUE5AR2UD4FBU6TNEJOU4UR4KC6XL5PWW5K4",
-  //     "creator": "ATTR6RUEHHBHXKUHT4GUOYWNBVDV2GJ5FHUWCSFZLHD55EVKZWOWSM7ABQ",
-  //     "decimals": 0,
-  //     "default-frozen": false,
-  //     "freeze": "AK6Q33PDO4RJZQPHEMODC6PUE5AR2UD4FBU6TNEJOU4UR4KC6XL5PWW5K4",
-  //     "manager": "ATTR6RUEHHBHXKUHT4GUOYWNBVDV2GJ5FHUWCSFZLHD55EVKZWOWSM7ABQ",
-  //     "metadata-hash": "MTZlZmFhMzkyNGE2ZmQ5ZDNhNDgyNDc5OWE0YWM2NWQ=",
-  //     "name": "latinum",
-  //     "reserve": "AK6Q33PDO4RJZQPHEMODC6PUE5AR2UD4FBU6TNEJOU4UR4KC6XL5PWW5K4",
-  //     "total": 1000,
-  //     "unit-name": "LATINUM",
-  //     "url": "http://someurl"
-  // }
-
-  return { assetID };
 }
 async function receiveAsset(algodClient, receiver, assetID) {
   params = await algodClient.getTransactionParams().do();
