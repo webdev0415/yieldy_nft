@@ -4,13 +4,13 @@ const fs = require("fs");
 
 const DISPENSERACCOUNT =
   "HZ57J3K46JIJXILONBBZOHX6BKPXEM2VVXNRFSUED6DKFD5ZD24PMJ3MVA";
-async function createAsset(algodClient, sender) {
+async function createAsset(algodClient, sender, manager) {
   console.log("");
   console.log("==> CREATE ASSET");
   //Check account balance
   const accountInfo = await algodClient.accountInformation(sender.addr).do();
   const startingAmount = accountInfo.amount;
-  console.log("Alice account balance: %d microAlgos", startingAmount);
+  console.log("Sender account balance: %d microAlgos", startingAmount);
 
   // Construct the transaction
   const params = await algodClient.getTransactionParams().do();
@@ -18,32 +18,40 @@ async function createAsset(algodClient, sender) {
   params.fee = 1000;
   params.flatFee = true;
 
+  const note = undefined; // arbitrary data to be stored in the transaction; here, none is stored
+
   // Whether user accounts will need to be unfrozen before transacting
   const defaultFrozen = false;
+
+  // total number of this asset available for circulation
+  // const totalIssuance = 1000;
+
   // Used to display asset units to user
-  const unitName = "ALICECOI";
+  const unitName = "LATINUM";
+
   // Friendly name of the asset
-  const assetName = "Alice's Artwork Coins@arc3";
+  const assetName = "latinum";
+
   // Optional string pointing to a URL relating to the asset
-  const url = "https://riotracersnft.s3.us-east-2.amazonaws.com/coming-soon.gif";
-  // Optional hash commitment of some sort relating to the asset. 32 character length.
-  // metadata can define the unitName and assetName as well.
-  // see ASA metadata conventions here: https://github.com/algorandfoundation/ARCs/blob/main/ARCs/arc-0003.md
+  const url =
+    "https://riotracersnft.s3.us-east-2.amazonaws.com/coming-soon.gif";
 
   // The following parameters are the only ones
   // that can be changed, and they have to be changed
   // by the current manager
-  // Specified address can change reserve, freeze, clawback, and manager
+
   // If they are set to undefined at creation time, you will not be able to modify these later
-  const managerAddr = sender.addr; // OPTIONAL: FOR DEMO ONLY, USED TO DESTROY ASSET WITHIN
+
+  // Specified address can change reserve, freeze, clawback, and manager
+  const managerAddr = manager.addr; // OPTIONAL: FOR DEMO ONLY, USED TO DESTROY ASSET WITHIN
   // Specified address is considered the asset reserve
   // (it has no special privileges, this is only informational)
-  const reserveAddr = undefined;
+  const reserveAddr = manager.addr;
   // Specified address can freeze or unfreeze user asset holdings
-  const freezeAddr = undefined;
+  const freezeAddr = manager.addr;
   // Specified address can revoke user asset holdings and send
   // them to other addresses
-  const clawbackAddr = undefined;
+  const clawbackAddr = manager.addr;
 
   // Use actual total  > 1 to create a Fungible Token
   // example 1:(fungible Tokens)
@@ -56,67 +64,26 @@ async function createAsset(algodClient, sender) {
   const decimals = 0;
   const total = 1; // how many of this asset there will be
 
+  // Optional hash commitment of some sort relating to the asset. 32 character length.
+  const assetMetadataHash = "16efaa3924a6fd9d3a4824799a4ac65d";
+
   // temp fix for replit
   //const metadata2 = "16efaa3924a6fd9d3a4824799a4ac65d";
   // const fullPath =  __dirname + '/NFT/metadata.json';
   //const metadatafile = (await fs.readFileSync(fullPath));
   // const metadatafile = (await fs.readFileSync(fullPath));
   // console.log('metadatafile', metadatafile)
-  const metadataSample = JSON.stringify({
-    name: "ALICEART",
-    description: "Alice's Artwork",
-    image: "https://riotracersnft.s3.us-east-2.amazonaws.com/coming-soon.gif",
-    image_integrity: "sha256-/tih/7ew0eziEZIVD4qoTWb0YrElAuRG3b40SnEstyk=",
-    properties: {
-      simple_property: "Alice's first artwork",
-      rich_property: {
-        name: "AliceArt",
-        value: "001",
-        display_value: "001",
-        class: "emphasis",
-        css: {
-          color: "#ffffff",
-          "font-weight": "bold",
-          "text-decoration": "underline",
-        },
-      },
-      array_property: {
-        name: "Artwork",
-        value: [1, 2, 3, 4],
-        class: "emphasis",
-      },
-    },
-  });
-  const metadatafile = Buffer.from(metadataSample);
-  const hash = crypto.createHash("sha256");
-  hash.update(metadatafile);
-
-  // replit error  - work around
-  const metadata = "16efaa3924a6fd9d3a4824799a4ac65d";
-  // replit error  - the following only runs in debug mode in replit, and use this in your code
-  // const metadata = new Uint8Array(hash.digest()); // use this in your code
-
-//   const fullPathImage = __dirname + "/NFT/alice-nft.png";
-//   const metadatafileImage = await fs.readFileSync(fullPathImage);
-//   console.log("metadatafileImage", metadatafileImage);
-  //    const metadatafileImage = (await fs.readFileSync(fullPathImage)).toString();
-//   const hashImage = crypto.createHash("sha256");
-//   hashImage.update(metadatafileImage);
-//   const hashImageBase64 = hashImage.digest("base64");
-//   const imageIntegrity = "sha256-" + hashImageBase64;
-
-  // use this in yout metadata.json file
-//   console.log("image_integrity : " + imageIntegrity);
 
   // signing and sending "txn" allows "addr" to create an asset
   const txn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
     from: sender.addr,
+    note,
     total,
     decimals,
     assetName,
     unitName,
     assetURL: url,
-    assetMetadataHash: metadata,
+    assetMetadataHash,
     defaultFrozen,
     freeze: freezeAddr,
     manager: managerAddr,
@@ -184,6 +151,140 @@ async function createAsset(algodClient, sender) {
   //   "creator": "RA6RAUNDQGHRWTCR5YRL2YJMIXTHWD5S3ZYHVBGSNA76AVBAYELSNRVKEI",
   //   "is-frozen": false
   // }
+}
+async function modifyAsset(algodClient, sender, manager) {
+  //These valuse should be come from params.
+  const note = undefined;
+  const assetID = 37491734;
+  const reserve = undefined;
+  const freeze = undefined;
+  const clawback = undefined;
+  params = await algodclient.getTransactionParams().do();
+  //comment out the next two lines to use suggested fee
+  params.fee = 1000;
+  params.flatFee = true;
+
+  // Note that the change has to come from the existing manager
+  const c = algosdk.makeAssetConfigTxnWithSuggestedParams(
+    recoveredAccount2.addr,
+    note,
+    assetID,
+    manager.addr,
+    reserve,
+    freeze,
+    clawback,
+    params
+  );
+
+  const rawSignedTxn = ctxn.signTxn(manager.sk);
+  const ctx = await algodclient.sendRawTransaction(rawSignedTxn).do();
+  console.log("Transaction : " + ctx.txId);
+
+  // wait for transaction to be confirmed
+  await waitForConfirmation(algodclient, ctx.txId, 4);
+
+  // Get the asset information for the newly changed asset
+  // use indexer or utiltiy function for Account info
+  // The manager should now be the same as the creator
+  await printCreatedAsset(algodclient, sender.addr, assetID);
+  // Transaction: BXDODE2RUC77WVJL6HOQBACVAS6QPXOBSE55ZZTLJUTNLBXZNENA
+  // Transaction BXDODE2RUC77WVJL6HOQBACVAS6QPXOBSE55ZZTLJUTNLBXZNENA confirmed in round 3961855
+  // AssetID = 2653785
+  // parms = {
+  //     "clawback": "AK6Q33PDO4RJZQPHEMODC6PUE5AR2UD4FBU6TNEJOU4UR4KC6XL5PWW5K4",
+  //     "creator": "ATTR6RUEHHBHXKUHT4GUOYWNBVDV2GJ5FHUWCSFZLHD55EVKZWOWSM7ABQ",
+  //     "decimals": 0,
+  //     "default-frozen": false,
+  //     "freeze": "AK6Q33PDO4RJZQPHEMODC6PUE5AR2UD4FBU6TNEJOU4UR4KC6XL5PWW5K4",
+  //     "manager": "ATTR6RUEHHBHXKUHT4GUOYWNBVDV2GJ5FHUWCSFZLHD55EVKZWOWSM7ABQ",
+  //     "metadata-hash": "MTZlZmFhMzkyNGE2ZmQ5ZDNhNDgyNDc5OWE0YWM2NWQ=",
+  //     "name": "latinum",
+  //     "reserve": "AK6Q33PDO4RJZQPHEMODC6PUE5AR2UD4FBU6TNEJOU4UR4KC6XL5PWW5K4",
+  //     "total": 1000,
+  //     "unit-name": "LATINUM",
+  //     "url": "http://someurl"
+  // }
+
+  return { assetID };
+}
+async function receiveAsset(algodClient, receiver, assetID) {
+  params = await algodClient.getTransactionParams().do();
+  //comment out the next two lines to use suggested fee
+  params.fee = 1000;
+  params.flatFee = true;
+  // Opting in to transact with the new asset
+  // Allow accounts that want recieve the new asset
+  // Have to opt in. To do this they send an asset transfer
+  // of the new asset to themseleves
+  // In this example we are setting up the 3rd recovered account to
+  // receive the new asset
+  let sender = receiver.addr;
+  let recipient = sender;
+  // We set revocationTarget to undefined as
+  // This is not a clawback operation
+  let revocationTarget = undefined;
+  // CloseReaminerTo is set to undefined as
+  // we are not closing out an asset
+  let closeRemainderTo = undefined;
+  const note = undefined;
+  // We are sending 0 assets
+  amount = 0;
+  // signing and sending "txn" allows sender to begin accepting asset specified by creator and index
+  let opttxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
+    sender,
+    recipient,
+    closeRemainderTo,
+    revocationTarget,
+    amount,
+    note,
+    assetID,
+    params
+  );
+  // Must be signed by the account wishing to opt in to the asset
+  rawSignedTxn = opttxn.signTxn(receiver.sk);
+  let opttx = await algodClient.sendRawTransaction(rawSignedTxn).do();
+  console.log("Transaction : " + opttx.txId);
+  // wait for transaction to be confirmed
+  await waitForConfirmation(algodClient, opttx.txId, 4);
+  //You should now see the new asset listed in the account information
+  console.log("Account 3 = " + receiver.addr);
+  await printAssetHolding(algodClient, receiver.addr, assetID);
+}
+async function transferAsset(algodClient, sender, receiver, assetID) {
+  // Transfer New Asset:
+  // Now that account3 can recieve the new tokens
+  // we can tranfer tokens in from the creator
+  // to account3
+  sender_addr = sender.addr;
+  recipient = receiver.addr;
+  revocationTarget = undefined;
+  closeRemainderTo = undefined;
+  note = undefined;
+  //Amount of the asset to transfer
+  amount = 1;
+  params = await algodClient.getTransactionParams().do();
+  params.fee = 1000;
+  params.flatFee = true;
+  // signing and sending "txn" will send "amount" assets from "sender" to "recipient"
+  let xtxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
+    sender_addr,
+    recipient,
+    closeRemainderTo,
+    revocationTarget,
+    amount,
+    note,
+    assetID,
+    params
+  );
+  // Must be signed by the account sending the asset
+  rawSignedTxn = xtxn.signTxn(sender.sk);
+  let xtx = await algodClient.sendRawTransaction(rawSignedTxn).do();
+  console.log("Transaction : " + xtx.txId);
+  // wait for transaction to be confirmed
+  await waitForConfirmation(algodClient, xtx.txId, 4);
+
+  // You should now see the 10 assets listed in the account information
+  await printAssetHolding(algodClient, receiver.addr, assetID);
 }
 
 async function destroyAsset(algodClient, sender, assetID) {
@@ -306,26 +407,6 @@ async function closeoutAliceAlgos(algodClient, alice) {
   // Bobs Account balance: 0 microAlgos
 }
 
-const createAccount = function () {
-  try {
-    // let account1_mnemonic = "goat march toilet hope fan federal around nut drip island tooth mango table deal diesel reform lecture warrior tent volcano able wheel marriage absorb minimum";
-    // const myaccount = algosdk.mnemonicToSecretKey(account1_mnemonic);
-    const myaccount = algosdk.generateAccount();
-    console.log("Account Address = " + myaccount.addr);
-    let account_mnemonic = algosdk.secretKeyToMnemonic(myaccount.sk);
-    console.log("Account Mnemonic = " + account_mnemonic);
-    console.log("Account created. Save off Mnemonic and address");
-    console.log("Add funds to account using the TestNet Dispenser: ");
-    console.log(
-      "https://dispenser.testnet.aws.algodev.network/?account=" + myaccount.addr
-    );
-
-    return myaccount;
-  } catch (err) {
-    console.log("err", err);
-  }
-};
-
 /**
  * Wait until the transaction is confirmed or rejected, or until 'timeout'
  * number of rounds have passed.
@@ -416,30 +497,41 @@ const printAssetHolding = async function (algodClient, account, assetid) {
     }
   }
 };
-
-async function createNFT() {
+// Function used to print all asset holding for account
+const printAllAssetHolding = async function (algodClient, account) {
+  let accountInfo = await algodClient.accountInformation(account).do();
+  console.log("account", account, accountInfo.assets)
+}
+async function main() {
   try {
-    const defaultMnemonic =
+    const senderMnemonic =
       "scene position marble verb lemon decrease novel mammal either shuffle avoid load census mixed weather wonder erupt rapid success gloom hockey forest addict able crouch";
-    const sender = algosdk.mnemonicToSecretKey(defaultMnemonic);
-    //   console.log("alice", alice)
-    // const alice = createAccount()
+    const sender = algosdk.mnemonicToSecretKey(senderMnemonic); // DO7SE4GESRI5EN23LL7TTQ6ZGHUBBSEMPGZNGIESSFDBXG6PT2U672KAEA
 
-    // console.log("Press any key when the account is funded");
-    // await keypress();
-    // Connect your client
-    // const algodToken = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-    // const algodServer = 'http://localhost';
-    // const algodPort = 4001;
+    const managerMnemonic =
+      "attack visa object sponsor shuffle razor bacon holiday leave illness candy clown extra sing hawk celery firm void logic hair throw cover symbol ability coconut";
+    const manager = algosdk.mnemonicToSecretKey(managerMnemonic); // M2Z4TX2QBDDHLFUAJ6I4BVTXES45DMBF6VPVQKOIAC4P3F323SILOWDJW4
+
+    const receiverMnemonic =
+      "amazing object main salute globe equip lake imitate stand push stage angry wide mercy treat display scatter imitate silent left bleak mountain used absorb quote";
+    const receiver = algosdk.mnemonicToSecretKey(receiverMnemonic); // T544Z3JDFZRFALB5FHOIQDWRUG6V5JT7OZWRRGR4OJ4BUFZZT2FQN7BXJM
+
     const algodToken =
       "2f3203f21e738a1de6110eba6984f9d03e5a95d7a577b34616854064cf2c0e7b";
     const algodServer = "https://academy-algod.dev.aws.algodev.network";
     const algodPort = 443;
 
     let algodClient = new algosdk.Algodv2(algodToken, algodServer, algodPort);
+    await printAllAssetHolding(algodClient, sender.addr);
+    await printAllAssetHolding(algodClient, manager.addr);
+    await printAllAssetHolding(algodClient, receiver.addr);
 
+    const assetID = 36793844;
+    // await receiveAsset(algodClient, sender, assetID)
+    await transferAsset(algodClient, receiver, sender, assetID)
+    
     // CREATE ASSET
-    const { assetID } = await createAsset(algodClient, sender);
+    // const { assetID } = await createAsset(algodClient, sender, manager);
     // DESTROY ASSET
     // await destroyAsset(algodClient, sender, assetID);
     // CLOSEOUT ALGOS - Alice closes out Alogs to dispenser
@@ -450,4 +542,4 @@ async function createNFT() {
   process.exit();
 }
 
-createNFT();
+main();
