@@ -1,6 +1,5 @@
 const algosdk = require("algosdk");
 const crypto = require("crypto");
-const fs = require("fs");
 
 const DISPENSERACCOUNT =
   "HZ57J3K46JIJXILONBBZOHX6BKPXEM2VVXNRFSUED6DKFD5ZD24PMJ3MVA";
@@ -322,7 +321,6 @@ async function destroyAsset(algodClient, sender, assetID) {
   );
   // The account3 and account1 should no longer contain the asset as it has been destroyed
   console.log("Asset ID: " + assetID);
-  console.log("Alice = " + sender.addr);
   await printCreatedAsset(algodClient, sender.addr, assetID);
   await printAssetHolding(algodClient, sender.addr, assetID);
 
@@ -342,7 +340,7 @@ async function destroyAsset(algodClient, sender, assetID) {
   // Alice = RA6RAUNDQGHRWTCR5YRL2YJMIXTHWD5S3ZYHVBGSNA76AVBAYELSNRVKEI
   // Bob = YC3UYV4JLHD344OC3G7JK37DRVSE7X7U2NOZVWSQNVKNEGV4M3KFA7WZ44
 }
-async function closeoutAliceAlgos(algodClient, alice) {
+async function closeoutAliceAlgos(algodClient, sender) {
   console.log("");
   console.log("==> CLOSE OUT ALICE'S ALGOS TO DISPENSER");
   let accountInfo = await algodClient.accountInformation(sender.addr).do();
@@ -359,11 +357,11 @@ async function closeoutAliceAlgos(algodClient, alice) {
   const receiver = sender.addr;
   const enc = new TextEncoder();
   const amount = 0;
-  const sender = sender.addr;
+  const sender_addr = sender.addr;
   // closeToRemainder will remove the assetholding from the account
   const closeRemainderTo = DISPENSERACCOUNT;
   const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-    from: sender,
+    from: sender_addr,
     to: receiver,
     amount,
     closeRemainderTo,
