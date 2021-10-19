@@ -148,6 +148,8 @@ export class AssetService {
     assetId,
     amount,
   }: AssetTransferDto) {
+    console.log("senderAccount", senderAccount)
+    console.log("recipientAccount", recipientAccount)
     // Create opt in from recipient user (will send zero assets to recipient)
     await this.assetTransferOptIn(recipientAccount, assetId);
 
@@ -282,12 +284,12 @@ export class AssetService {
     console.log("adminSk", adminSk)
     // sign the transaction
     const signedTxn = txn.signTxn(adminSk);
-
+    console.log("signedTxn", signedTxn)
     let opttx = await algoClient
       .sendRawTransaction(signedTxn)
       .do()
       .catch((err) => console.log(err));
-
+    console.log("opttx", opttx)
     console.log('Transaction : ' + opttx.txId);
     
     // wait for transaction to be confirmed
@@ -356,9 +358,11 @@ export class AssetService {
         const resId = await this.sendAlgos(senderAccount, holderAddress, sellPrice)
         console.log("resId", resId)
         if (resId) {
+          const sender = recipientAccount
+          const receiver = senderAccount
           await this.createAssetTransferWithAssetInfo({
-            recipientAccount,
-            senderAccount,
+            senderAccount: recipientAccount,
+            recipientAccount: senderAccount,
             assetId,
             amount
           })
