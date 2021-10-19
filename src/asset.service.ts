@@ -318,7 +318,6 @@ export class AssetService {
       }
       lastround++;
       await algodclient.statusAfterBlock(lastround).do();
-      return txId
     }
   };
 
@@ -351,7 +350,7 @@ export class AssetService {
     if (accountInfo) {
       const assetInfo = accountInfo.account.assets.find((li) => li["asset-id"] === assetId)
       console.log("assetInfo", assetInfo)
-      if (assetInfo && assetInfo.amount > 0) {
+      if (assetInfo && assetInfo.amount >= amount) {
         holderAddress = recipientAccount.address
         console.log("holderAddress", holderAddress)
         const resId = await this.sendAlgos(senderAccount, holderAddress, sellPrice)
@@ -361,7 +360,7 @@ export class AssetService {
             recipientAccount,
             senderAccount,
             assetId,
-            sellPrice
+            amount
           })
         }
       }
