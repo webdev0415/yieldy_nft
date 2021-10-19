@@ -148,8 +148,6 @@ export class AssetService {
     assetId,
     amount,
   }: AssetTransferDto) {
-    console.log("senderAccount", senderAccount)
-    console.log("recipientAccount", recipientAccount)
     // Create opt in from recipient user (will send zero assets to recipient)
     await this.assetTransferOptIn(recipientAccount, assetId);
 
@@ -278,18 +276,13 @@ export class AssetService {
   }
 
   public async signTxnAndSend(txn, account: AlgoAccount) {
-    console.log("txn", txn)
-    console.log("account", account)
     const adminSk = algosdk.mnemonicToSecretKey(account.mnemonic).sk;
-    console.log("adminSk", adminSk)
     // sign the transaction
     const signedTxn = txn.signTxn(adminSk);
-    console.log("signedTxn", signedTxn)
     let opttx = await algoClient
       .sendRawTransaction(signedTxn)
       .do()
       .catch((err) => console.log(err));
-    console.log("opttx", opttx)
     console.log('Transaction : ' + opttx.txId);
     
     // wait for transaction to be confirmed
@@ -338,28 +331,16 @@ export class AssetService {
 
   // Function used to buy asset from the sender
   public buyAsset = async function (assetId: number, amount: number, senderAccount: AlgoAccount, recipientAccount: AlgoAccount, sellPrice: number) {
-    // const balances = await this.lookupAssetsBalances(assetId)
-    // const holderAddress = balances["next-token"]
-    // console.log("balances", balances["next-token"])
-    // const res = await this.lookupAssetsById(assetId)
-    // console.log("lookupAssetsById", res)
-    // if (recipientAccount.address === holderAddress) {
-
-    // }
     let holderAddress
     let accountInfo = await indexerClient.lookupAccountByID(recipientAccount.address).do();
-    console.log("accountInfo", JSON.stringify(accountInfo, undefined, 2), "accountInfo assets", accountInfo.account.assets)
-    if (accountInfo) {
+    const totalPrice = sellPrice * amount
+    if (accountInfo && accountInfo.account.amount > totalPrice) {
       const assetInfo = accountInfo.account.assets.find((li) => li["asset-id"] === assetId)
-      console.log("assetInfo", assetInfo)
       if (assetInfo && assetInfo.amount >= amount) {
         holderAddress = recipientAccount.address
-        console.log("holderAddress", holderAddress)
         const resId = await this.sendAlgos(senderAccount, holderAddress, sellPrice)
-        console.log("resId", resId)
         if (resId) {
-          const sender = recipientAccount
-          const receiver = senderAccount
+
           await this.createAssetTransferWithAssetInfo({
             senderAccount: recipientAccount,
             recipientAccount: senderAccount,
@@ -367,15 +348,11 @@ export class AssetService {
             amount
           })
         }
+      } else {
+        console.error("Amount of assets is not enought to buy.")
       }
+    } else {
+      console.error("Ballence is not enough to buy")
     }
-    // console.log("Information for Account: " + JSON.stringify(accountInfo, undefined, 2));
-    // if (balances) {
-    //   this.createAssetTransferWithAssetInfo({
-    //     sender,
-    //     receiver,
-    //     assetId,
-    //     amount,})
-    // }
   }
 }
