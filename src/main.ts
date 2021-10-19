@@ -30,7 +30,7 @@ app.get(prefix + '/asset/account/:id', cors(corsOptions), async (req, res) => {
   let asset = '';
 
   if (address) {
-    asset = await assetService.lookupAddressById(address);
+    asset = await assetService.lookupAssetsById(req.params.id);
   }
 
   res.send(asset);
@@ -79,6 +79,7 @@ app.post(prefix + '/asset/transfer', cors(corsOptions), async (req, res) => {
 
 // Create an algorand asset
 app.post(prefix + '/asset', cors(corsOptions), async (req, res) => {
+  console.log("req body", req.body)
   let asset;
   const { body } = req;
 
@@ -91,6 +92,22 @@ app.post(prefix + '/asset', cors(corsOptions), async (req, res) => {
   }
 
   res.send(asset);
+});
+// Buy an algorand asset
+app.post(prefix + '/asset/buy', cors(corsOptions), async (req, res) => {
+
+  const { assetId, amount, buyer, seller, sell_price } = req.body
+  const sellPrice = sell_price
+  const senderAccount = data.find((account) => {
+    return account.address === buyer;
+  });
+
+  const recipientAccount = data.find((account) => {
+    return account.address === seller;
+  });
+  const resp = await assetService.buyAsset(assetId, amount, senderAccount, recipientAccount, sellPrice);
+
+  res.send(resp);
 });
 
 app.listen(port, () => {

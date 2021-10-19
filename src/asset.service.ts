@@ -94,7 +94,6 @@ export class AssetService {
     if (!data || !data.totalTokens || !data.tokenName || !data.address) {
       return Promise.reject('Not enough data provided to create the asset');
     }
-
     const { totalTokens, tokenName, address } = data;
 
     let params = await algoClient.getTransactionParams().do();
@@ -212,20 +211,20 @@ export class AssetService {
     amount: number,
   ) {
     let params = await algoClient.getTransactionParams().do();
-
-    let txn = {
+    const closeRemainderTo = undefined
+    let txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       from: senderAccount.address,
       to: recipientAddress,
       fee: 1,
       amount,
-      firstRound: params.firstRound,
-      lastRound: params.lastRound,
-      genesisID: params.genesisID,
-      genesisHash: params.genesisHash,
+      closeRemainderTo,
       note: new Uint8Array(0),
-    };
+      suggestedParams: params,
+      
+    });
 
-    await this.signTxnAndSend(txn, senderAccount);
+    const tx = await this.signTxnAndSend(txn, senderAccount);
+    return tx
   }
 
   public async initiateAssetClawback(
@@ -277,7 +276,10 @@ export class AssetService {
   }
 
   public async signTxnAndSend(txn, account: AlgoAccount) {
+    console.log("txn", txn)
+    console.log("account", account)
     const adminSk = algosdk.mnemonicToSecretKey(account.mnemonic).sk;
+    console.log("adminSk", adminSk)
     // sign the transaction
     const signedTxn = txn.signTxn(adminSk);
 
@@ -287,9 +289,10 @@ export class AssetService {
       .catch((err) => console.log(err));
 
     console.log('Transaction : ' + opttx.txId);
-
+    
     // wait for transaction to be confirmed
     await this.waitForConfirmation(algoClient, opttx.txId);
+    return opttx
   }
 
   // Function used to wait for a tx confirmation
@@ -315,6 +318,7 @@ export class AssetService {
       }
       lastround++;
       await algodclient.statusAfterBlock(lastround).do();
+      return txId
     }
   };
 
@@ -330,4 +334,45 @@ export class AssetService {
       }
     }
   };
+
+  // Function used to buy asset from the sender
+  public buyAsset = async function (assetId: number, amount: number, senderAccount: AlgoAccount, recipientAccount: AlgoAccount, sellPrice: number) {
+    // const balances = await this.lookupAssetsBalances(assetId)
+    // const holderAddress = balances["next-token"]
+    // console.log("balances", balances["next-token"])
+    // const res = await this.lookupAssetsById(assetId)
+    // console.log("lookupAssetsById", res)
+    // if (recipientAccount.address === holderAddress) {
+
+    // }
+    let holderAddress
+    let accountInfo = await indexerClient.lookupAccountByID(recipientAccount.address).do();
+    console.log("accountInfo", JSON.stringify(accountInfo, undefined, 2), "accountInfo assets", accountInfo.account.assets)
+    if (accountInfo) {
+      const assetInfo = accountInfo.account.assets.find((li) => li["asset-id"] === assetId)
+      console.log("assetInfo", assetInfo)
+      if (assetInfo && assetInfo.amount > 0) {
+        holderAddress = recipientAccount.address
+        console.log("holderAddress", holderAddress)
+        const resId = await this.sendAlgos(senderAccount, holderAddress, sellPrice)
+        console.log("resId", resId)
+        if (resId) {
+          await this.createAssetTransferWithAssetInfo({
+            recipientAccount,
+            senderAccount,
+            assetId,
+            sellPrice
+          })
+        }
+      }
+    }
+    // console.log("Information for Account: " + JSON.stringify(accountInfo, undefined, 2));
+    // if (balances) {
+    //   this.createAssetTransferWithAssetInfo({
+    //     sender,
+    //     receiver,
+    //     assetId,
+    //     amount,})
+    // }
+  }
 }
