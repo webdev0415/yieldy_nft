@@ -338,7 +338,7 @@ export class AssetService {
       const assetInfo = accountInfo.account.assets.find((li) => li["asset-id"] === assetId)
       if (assetInfo && assetInfo.amount >= amount) {
         holderAddress = recipientAccount.address
-        const resId = await this.sendAlgos(senderAccount, holderAddress, sellPrice)
+        const resId = await this.sendAlgos(senderAccount, holderAddress, totalPrice)
         if (resId) {
 
           await this.createAssetTransferWithAssetInfo({
