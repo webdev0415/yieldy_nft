@@ -380,4 +380,24 @@ export class AssetService {
       console.error("Ballence is not enough to buy")
     }
   }
+
+  // Place a bid 
+  public async function(bidderAccount, escrowAccount, bidPrice, assetId, ownerAccount) {
+    const amount = 1;
+    let accountInfo = await indexerClient.lookupAccountByID(bidderAccount.address).do();
+    if (accountInfo && accountInfo.account.amount >= bidPrice) {
+      const assetInfo = accountInfo.account.assets.find((li) => li["asset-id"] === assetId)
+      if (assetInfo && assetInfo.amount >= 1) {
+        const resId = await this.sendAlgos(bidderAccount, escrowAccount, bidPrice)
+        if (resId) {
+          await this.createAssetTransferWithAssetInfo({
+            senderAccount: ownerAccount,
+            recipientAccount: escrowAccount,
+            assetId,
+            amount
+          })
+        }
+      }
+    }
+  }
 }
