@@ -382,12 +382,13 @@ export class AssetService {
   }
 
   // Place a bid 
-  public async function(bidderAccount, escrowAccount, bidPrice, assetId, ownerAccount) {
+  public async function(bidderAccount, escrowAccount, bidPrice, setPrice, assetId, ownerAccount) {
     const amount = 1;
     let accountInfo = await indexerClient.lookupAccountByID(bidderAccount.address).do();
+
     if (accountInfo && accountInfo.account.amount >= bidPrice) {
       const assetInfo = accountInfo.account.assets.find((li) => li["asset-id"] === assetId)
-      if (assetInfo && assetInfo.amount >= 1) {
+      if (assetInfo && assetInfo.amount >= amount) {
         const resId = await this.sendAlgos(bidderAccount, escrowAccount, bidPrice)
         if (resId) {
           await this.createAssetTransferWithAssetInfo({
@@ -398,6 +399,25 @@ export class AssetService {
           })
         }
       }
+      // in case bidPrice > previous Price
+      // return back coin to previous bidder when another higher bidder apply.
+      if (bidPrice >= setPrice) {
+        const escrowAccountInfo = await indexerClient.lookupAccountByID(escrowAccount.address).do();
+        const assetExistInEscrow = escrowAccountInfo.account.assets.some((li) => li["asset-id"] === assetId)
+        if (assetExistInEscrow) {
+          await this.createAssetTransferWithAssetInfo({
+            senderAccount: escrowAccount,
+            recipientAccount: bidderAccount,
+            assetId,
+            amount
+          })
+        }
+      }
     }
+  }
+
+  //Test function
+  public async testFunc(address) {
+    
   }
 }
