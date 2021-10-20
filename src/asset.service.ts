@@ -328,6 +328,31 @@ export class AssetService {
       }
     }
   };
+  // Freeze an Asset
+  public freezeAsset = async function (freezerAccount, targetAccount, assetID) {
+    const params = await algoClient.getTransactionParams().do();
+    //comment out the next two lines to use suggested fee
+    params.fee = 1000;
+    params.flatFee = true;
+
+    const from = freezerAccount.addr;
+    const freezeTarget = targetAccount.addr;
+    const freezeState = true;
+    const note = undefined;
+
+    let ftxn = algosdk.makeAssetFreezeTxnWithSuggestedParams(from, note,
+      assetID, freezeTarget, freezeState, params)
+
+    const rawSignedTxn = ftxn.signTxn(freezerAccount.sk)
+    let ftx = (await algoClient.sendRawTransaction(rawSignedTxn).do());
+    console.log("Transaction : " + ftx.txId);
+    // wait for transaction to be confirmed
+    await this.waitForConfirmation(algoClient, ftx.txId);
+
+    // You should now see the asset is frozen listed in the account information
+    console.log("Account 3 = " + freezeTarget.addr);
+    await this.printAssetHolding(algoClient, freezeTarget.addr, assetID);
+  }
 
   // Function used to buy asset from the sender
   public buyAsset = async function (assetId: number, amount: number, senderAccount: AlgoAccount, recipientAccount: AlgoAccount, sellPrice: number) {
