@@ -382,14 +382,28 @@ export class AssetService {
   }
 
   // Place a bid 
-  public async function(bidderAccount, escrowAccount, bidPrice, setPrice, assetId, ownerAccount) {
+  public placeBid = async function(bidderAccount, escrowAccount, bidPrice, assetId) {
+    let accountInfo = await indexerClient.lookupAccountByID(bidderAccount.address).do();
+    const assetInfo = accountInfo.account.assets.find((li) => li["asset-id"] === assetId)
+    if (accountInfo && accountInfo.account.amount >= bidPrice && bidPrice > assetInfo.amount) {
+      await this.assetTransferOptIn(bidderAccount, assetId);
+      const resId = this.sendAlgos(bidderAccount, escrowAccount, bidPrice)
+      if (resId) {
+        this.sendAlgos(escrowAccount, assetInfo.address, assetInfo.amount)
+      }
+    }
+    
+  }
+
+  // Auction process - wip 
+  public auctionProcess = async function (bidderAccount, escrowAccount, bidPrice, setPrice, assetId, ownerAccount) {
     const amount = 1;
     let accountInfo = await indexerClient.lookupAccountByID(bidderAccount.address).do();
 
     if (accountInfo && accountInfo.account.amount >= bidPrice) {
       const assetInfo = accountInfo.account.assets.find((li) => li["asset-id"] === assetId)
       if (assetInfo && assetInfo.amount >= amount) {
-        const resId = await this.sendAlgos(bidderAccount, escrowAccount, bidPrice)
+        const resId = await this.sendAlgos(bidderAccount, escrowAccount.address, bidPrice)
         if (resId) {
           await this.createAssetTransferWithAssetInfo({
             senderAccount: ownerAccount,
